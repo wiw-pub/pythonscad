@@ -1777,6 +1777,17 @@ PyObject *python_multmatrix_sub(PyObject *pyobj, PyObject *pymat, int div)
     PyErr_SetString(PyExc_TypeError, "Matrix vector should be 4x4 array");
     return NULL;
   }
+
+  /**
+   * Translation from pythonscad multmatrix() to linalg notations.
+   * multmatrix(A, B) --> C = B x A
+   *
+   * To get B back with divmatrix(), given C and A:
+   * divmatrix(C, A) --> C x A_inv = B x A x A_inv
+   *
+   * Implicitly: create A_inv from second arg, and do multmatrix(A_inv, C).
+   */
+
   if (div) {
     auto tmp = mat.inverse().eval();
     mat = tmp;
@@ -1784,7 +1795,12 @@ PyObject *python_multmatrix_sub(PyObject *pyobj, PyObject *pymat, int div)
 
   Matrix4d objmat;
   if (!python_tomatrix(pyobj, objmat)) {
-    objmat = mat * objmat;
+    if (div) {
+      // Performs the logical equivalent of multmatrix(C, A_inv).
+      objmat = objmat * mat;
+    } else {
+      objmat = mat * objmat;
+    }
     return python_frommatrix(objmat);
   }
 
